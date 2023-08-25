@@ -17,7 +17,6 @@ export default {
                   publicKeyCredential: credential.toJSON(),
                 },
               }).then((res) => {
-                console.log(res);
                 if (res && res.failed) {
                   alert("Login failed");
                   return;

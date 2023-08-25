@@ -1,0 +1,4 @@
+en:
+  js:
+    discourse_passkeys:
+      rename_message: "Pick a name that will easily identify this passkey, for example, use the name of your password manager."

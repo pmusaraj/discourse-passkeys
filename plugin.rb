@@ -13,9 +13,11 @@ gem "cbor", "0.5.9.6"
 gem "safety_net_attestation", "0.4.0"
 gem "tpm-key_attestation", "0.12.0", require: false
 gem 'webauthn', '3.0.0'
+# list explicity all webauthn dependencies
 # core already includes "cose" and "openssl"
 
 enabled_site_setting :enable_passkeys
+register_asset "stylesheets/passkeys.scss"
 
 after_initialize do
   require File.expand_path("../app/controllers/passkeys_controller.rb", __FILE__)
@@ -25,7 +27,8 @@ after_initialize do
     post "/passkeys/register" => "passkeys#register_credentials"
     get "/passkeys/challenge" => "passkeys#challenge"
     post "/passkeys/auth" => "passkeys#auth"
-    delete "passkeys/delete-first" => "passkeys#delete_first"
+    delete "/passkeys/delete/:id" => "passkeys#delete_passkey"
+    post "/passkeys/rename/:id" => "passkeys#rename_passkey"
   end
 
   ::WebAuthn.configure do |config|
@@ -39,14 +42,7 @@ after_initialize do
     end
 
     # Relying Party name for display purposes
-    config.rp_name = "Test"
-
-    # Optionally configure a client timeout hint, in milliseconds.
-    # This hint specifies how long the browser should wait for any
-    # interaction with the user.
-    # This hint may be overridden by the browser.
-    # https://www.w3.org/TR/webauthn/#dom-publickeycredentialcreationoptions-timeout
-    # config.credential_options_timeout = 120_000
+    config.rp_name = SiteSetting.title
 
     # You can optionally specify a different Relying Party ID
     # (https://www.w3.org/TR/webauthn/#relying-party-identifier)
@@ -73,11 +69,12 @@ after_initialize do
 
   # Probably shouldn't use current user serializer here,
   # best to use something more specific to preferences route
-  add_to_serializer(:current_user, :passkeys, false) do
+  add_to_serializer(:current_user, :passkeys, respect_plugin_enabled: true) do
     UserSecurityKey
       .where(user_id: object.id, factor_type: UserSecurityKey.factor_types[:first_factor])
       .map do |usk|
         {
+          id: usk.id,
           name: usk.name,
           last_used: usk.last_used,
           created_at: usk.created_at

@@ -1,0 +1,16 @@
+.row-passkey {
+  padding: 1em 0em;
+  border-bottom: 1px solid var(--primary-low);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  .row-passkey__created-date,
+  .row-passkey__used-date {
+    color: var(--primary-medium);
+  }
+
+  .passkey-right {
+    margin-top: -0.5em; // lines up with heading
+  }
+}

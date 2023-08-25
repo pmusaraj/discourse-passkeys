@@ -17,13 +17,9 @@ class ::PasskeysController < ::ApplicationController
       )
     end
 
-    # existing_passkeys = UserSecurityKey
-    #   .where(user_id: current_user.id, factor_type: UserSecurityKey.factor_types[:first_factor])
-
     options = ::WebAuthn::Credential.options_for_create(
       user: { id: webauthn_id || new_id, name: current_user.username },
-      # Not sure yet if we need this
-      # exclude: existing_passkeys.map { |c| c.credential_id }
+      exclude: current_user_passkeys.map { |c| c.credential_id }
     )
 
     # Store the challenge so we can verify it later.
@@ -39,18 +35,21 @@ class ::PasskeysController < ::ApplicationController
     begin
       webauthn_credential.verify(session[:creation_challenge])
 
-      pp webauthn_credential
       # Store Credential ID, Credential Public Key
-      UserSecurityKey.create(
+      created_key = UserSecurityKey.create(
         user: current_user,
         credential_id: webauthn_credential.id,
         public_key: webauthn_credential.public_key,
-        name: "Passkey #{rand(100)}", # need to provide a form for this
+        name: "Main Passkey",
         factor_type: UserSecurityKey.factor_types[:first_factor],
       )
 
+      render json: {
+        id: created_key.id,
+        name: created_key.name,
+      }
     rescue ::WebAuthn::Error => e
-      puts e
+      render json: failed_json, status: 403
       # TODO: Add error handling
     end
   end
@@ -63,15 +62,11 @@ class ::PasskeysController < ::ApplicationController
 
   def auth
     params.require(:publicKeyCredential)
-    # Assuming you're using @github/webauthn-json package to send the `PublicKeyCredential` object back
-    # in params[:publicKeyCredential]:
     webauthn_credential = ::WebAuthn::Credential.from_get(params[:publicKeyCredential])
-
     stored_credential = UserSecurityKey.find_by(credential_id: webauthn_credential.id)
-    pp webauthn_credential.id
 
     if !stored_credential
-      render json: failed_json
+      render json: failed_json, status: 403
       return
     end
 
@@ -83,7 +78,6 @@ class ::PasskeysController < ::ApplicationController
       )
 
       # Continue with successful sign in
-      pp "Success!"
       user = User.find_by(id: stored_credential.user_id)
       if user.active && user.email_confirmed?
         stored_credential.update!(last_used: DateTime.now)
@@ -91,6 +85,7 @@ class ::PasskeysController < ::ApplicationController
         log_on_user(user)
         render_serialized(user, UserSerializer)
       else
+        # TODO: handle inactive user?
         render json: failed_json
       end
     # rescue WebAuthn::SignCountVerificationError => e
@@ -103,10 +98,26 @@ class ::PasskeysController < ::ApplicationController
     end
   end
 
-  def delete_first
-    # Temporary endpoint to reset current user's passkey
+  def delete_passkey
+    UserSecurityKey
+      .where(id: params[:id], user_id: current_user.id, factor_type: UserSecurityKey.factor_types[:first_factor])
+      .destroy_all
+    render json: success_json
+  end
+
+  def rename_passkey
+    params.require(:id)
+    params.require(:name)
+
+    UserSecurityKey.find_by(id: params[:id], user_id: current_user.id)&.update!(name: params[:name])
+
+    render json: success_json
+  end
+
+  private
+
+  def current_user_passkeys
     UserSecurityKey
       .where(user_id: current_user.id, factor_type: UserSecurityKey.factor_types[:first_factor])
-      .destroy_all
   end
 end

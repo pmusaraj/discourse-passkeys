@@ -1,26 +1,50 @@
 <div class="row registered-passkeys">
-  <div class="control-group pref-user-api-keys">
+  <div class="control-group pref-passkeys">
     <label class="control-label">Passkeys</label>
     {{#each @model.passkeys as |passkey|}}
-      <div>
-        <b>{{passkey.name}}</b>
-        --
-        {{or passkey.last_used "Never used"}}
-        --
-        <DButton
-          @action={{this.deletePasskey}}
-          @icon="times"
-          @translatedLabel="Delete"
-        />
+      <div class="row-passkey">
+        <div class="passkey-left">
+          <div><b>{{passkey.name}}</b></div>
+          <div class="row-passkey__created-date">{{format-date
+              passkey.created_at
+              format="medium"
+              leaveAgo="true"
+              prefix="Added "
+            }}</div>
+          <div class="row-passkey__used-date">
+            {{#if passkey.last_used}}
+              {{format-date
+                passkey.last_used
+                format="medium"
+                leaveAgo="true"
+                prefix="Last used "
+              }}
+            {{else}}
+              Never used
+            {{/if}}
+          </div>
+        </div>
+        <div class="passkey-right">
+          {{#if this.isCurrentUser}}
+            <div class="actions">
+              <PasskeyOptionsDropdown
+                @passkeyId={{passkey.id}}
+                @deletePasskey={{action "deletePasskey" passkey.id}}
+                @renamePasskey={{action "renamePK" passkey.id passkey.name}}
+              />
+            </div>
+          {{/if}}
+        </div>
       </div>
-      <p><i>Proof-of-concept feature, only one key is allowed per account. To
-          retest flow, delete and start over.</i></p>
-    {{else}}
-      <DButton
-        @action={{this.addPasskey}}
-        @icon="plus"
-        @translatedLabel="Add Passkey"
-      />
     {{/each}}
   </div>
+
+  {{#if this.isCurrentUser}}
+    <DButton
+      @action={{action "addPasskey"}}
+      @icon="plus"
+      @translatedLabel="Add Passkey"
+    />
+  {{/if}}
+
 </div>
