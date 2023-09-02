@@ -4,21 +4,8 @@ class ::PasskeysController < ::ApplicationController
   requires_login only: %i[create_options register_credentials delete_first]
 
   def create_options
-    # Generate and store the WebAuthn User ID the first time the user registers a credential
-    webauthn_id = UserCustomField.find_by(user_id: current_user.id, name: "webauthn_id")&.value
-    if !webauthn_id
-      new_id = ::WebAuthn.generate_user_id
-
-      # Temporarily a user custom field, this should be a column or a separate table
-      UserCustomField.create!(
-        user_id: current_user.id,
-        name: "webauthn_id",
-        value: new_id,
-      )
-    end
-
     options = ::WebAuthn::Credential.options_for_create(
-      user: { id: webauthn_id || new_id, name: current_user.username },
+      user: { id: current_user.create_or_fetch_secure_identifier, name: current_user.username },
       exclude: current_user_passkeys.map { |c| c.credential_id }
     )
 

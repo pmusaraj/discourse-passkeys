@@ -47,7 +47,7 @@ export default class UserPasskeys extends Component {
             if (error.name === "InvalidStateError") {
               this.dialog.alert({
                 message:
-                  "Error: This passkey is already registered on this device. To register it again, you must first delete it from your device's security settings.",
+                  "Error: A passkey is already registered on this device. To register a new key, you must first delete the existing key from your device's security settings.",
               });
             } else if (error.name === "NotAllowedError") {
               // do nothing, user cancelled the operation
